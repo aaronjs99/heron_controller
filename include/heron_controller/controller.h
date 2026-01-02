@@ -21,6 +21,9 @@ OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTE
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#ifndef HERON_CONTROLLER_CONTROLLER_H
+#define HERON_CONTROLLER_CONTROLLER_H
+
 #include <ros/ros.h>
 #include <control_toolbox/pid.h>
 #include <tf/tf.h>
@@ -110,3 +113,5 @@ class Controller {
 
         bool activate_control_service(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp);
 };
+
+#endif // HERON_CONTROLLER_CONTROLLER_H

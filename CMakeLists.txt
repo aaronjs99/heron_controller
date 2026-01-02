@@ -23,7 +23,7 @@ include_directories(
 )
 
 ## Declare a cpp executable
-add_executable(${PROJECT_NAME}_node src/controller.cpp src/force_compensator)
+add_executable(${PROJECT_NAME}_node src/controller.cpp src/force_compensator.cpp)
 add_dependencies(${PROJECT_NAME}_node heron_msgs_generate_messages_cpp)
 target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES})
 set_target_properties(${PROJECT_NAME}_node
