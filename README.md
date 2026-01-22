@@ -1,19 +1,14 @@
-# HERON CONTROLLER
-
-**H**ydrodynamic **C**ommand **A**llocation and **D**ynamics **C**ontrol.
-
-[![ROS](https://img.shields.io/badge/ROS-Noetic-blue)](http://wiki.ros.org/noetic)
-[![License](https://img.shields.io/badge/license-BSD-lightgrey)]()
+# HERON Controller: Hydrodynamic Command Allocation and Dynamics Control
 
 ## Abstract
 
-The **Heron Controller** provides the low-level C++ control loops for the Heron USV. It is responsible for mapping high-level wrench commands (Force X, Torque Z) into individual thruster setpoints, accounting for the differential drive geometry and hydrodynamic drag.
+The **Heron Controller** provides the low-level Real-Time control infrastructure for the Heron USV. The system is responsible for the synthesis of multi-variable wrench-to-thrust mappings, translating high-level force and torque vectors (Force X, Torque Z) into discrete thruster setpoints. This process accounts for the underlying differential drive topology and non-linear hydrodynamic drag manifolds.
 
-## Features
+## Methodological Features
 
-*   **Force Allocation**: Differential mixing for non-holonomic thrust.
-*   **Helm Interface**: Accepts standard `geometry_msgs/Twist` or `cmd_helm` inputs.
-*   **Status Reporting**: Publishes battery, temperature, and link status.
+*   **Dynamic Force Allocation**: Adaptive differential mixing for non-holonomic thrust distribution.
+*   **Advanced Helm Interface**: Orchestrates standard `geometry_msgs/Twist` and `heron_msgs/Helm` input streams.
+*   **System Diagnostics**: Asynchronous publication of battery metrics, thermal states, and communication link integrity.
 
 ## Node: `controller`
 
