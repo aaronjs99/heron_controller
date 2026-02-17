@@ -6,12 +6,12 @@ Software License Agreement (BSD)
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 the following conditions are met:
- * Redistributions of source code must retain the above copyright notice, this list of conditions and the
-   following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
-   following disclaimer in the documentation and/or other materials provided with the distribution.
- * Neither the name of Clearpath Robotics nor the names of its contributors may be used to endorse or promote
-   products derived from this software without specific prior written permission.
+* Redistributions of source code must retain the above copyright notice, this list of conditions and the
+ following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
+ following disclaimer in the documentation and/or other materials provided with the distribution.
+* Neither the name of Clearpath Robotics nor the names of its contributors may be used to endorse or promote
+ products derived from this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WAR-
 RANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
@@ -24,27 +24,25 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #ifndef HERON_CONTROLLER_FORCE_COMPENSATOR_H
 #define HERON_CONTROLLER_FORCE_COMPENSATOR_H
 
-#include <ros/ros.h>
-#include <heron_msgs/Drive.h>
 #include <geometry_msgs/Wrench.h>
 #include <heron_controller/heron_constants.h>
+#include <heron_msgs/Drive.h>
+#include <ros/ros.h>
 
-class ForceCompensator
-{
-    private:
-        ros::NodeHandle node_;
-        ros::Publisher cmd_pub_;
-        ros::Publisher eff_pub_;
-    public:
-        ForceCompensator(ros::NodeHandle &n);
-        ~ForceCompensator() {
-        }
+class ForceCompensator {
+private:
+  ros::NodeHandle node_;
+  ros::Publisher cmd_pub_;
+  ros::Publisher eff_pub_;
 
-        double calculate_motor_setting (double thrust);
-        double saturate_thrusters (double thrust);
-        void pub_thrust_cmd (geometry_msgs::Wrench output);
-        void pub_effective_wrench(double left_thrust,double right_thrust);
+public:
+  ForceCompensator(ros::NodeHandle &n);
+  ~ForceCompensator() {}
 
+  double calculate_motor_setting(double thrust);
+  double saturate_thrusters(double thrust);
+  void pub_thrust_cmd(geometry_msgs::Wrench output);
+  void pub_effective_wrench(double left_thrust, double right_thrust);
 };
 
-#endif // HERON_CONTROLLER_FORCE_COMPENSATOR_H
+#endif  // HERON_CONTROLLER_FORCE_COMPENSATOR_H

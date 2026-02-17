@@ -22,20 +22,19 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCL
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
 #ifndef HERON_CONSTANTS_H
 
-//TODO: Change defines to static const and enums
-//Boat Constants
-#define BOAT_WIDTH 0.7366 //m, ~15inches
-#define MAX_FWD_THRUST 45.0 //Newtons
-#define MAX_BCK_THRUST 25.0 //Newtons
-#define MAX_FWD_VEL 2 //m/s
-#define MAX_BCK_VEL 0.5 //m/s
+// TODO: Change defines to static const and enums
+// Boat Constants
+#define BOAT_WIDTH 0.7366    // m, ~15inches
+#define MAX_FWD_THRUST 45.0  // Newtons
+#define MAX_BCK_THRUST 25.0  // Newtons
+#define MAX_FWD_VEL 2        // m/s
+#define MAX_BCK_VEL 0.5      // m/s
 #define MAX_OUTPUT 1
-#define MAX_YAW_RATE 0.5 //rad/s
+#define MAX_YAW_RATE 0.5  // rad/s
 
-//Control Modes
+// Control Modes
 #define NO_CONTROL 0
 #define WRENCH_CONTROL 1
 #define HELM_CONTROL 2
