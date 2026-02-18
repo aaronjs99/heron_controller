@@ -417,8 +417,7 @@ int main(int argc, char** argv) {
   ros::Subscriber helm_sub = nh.subscribe("cmd_helm", 1, &Controller::helm_callback, &heron_control);
   ros::Subscriber course_sub = nh.subscribe("cmd_course", 1, &Controller::course_callback, &heron_control);
 
-  ros::Subscriber odom_sub = nh.subscribe("odometry/filtered", 1, &Controller::odom_callback, &heron_control);
-
+  ros::Subscriber odom_sub = nh.subscribe("/state/odometry/filtered", 1, &Controller::odom_callback, &heron_control);
   ros::Timer control_output = nh.createTimer(ros::Duration(1 / 50.0), &Controller::control_update, &heron_control);
   ros::Timer console_update = nh.createTimer(ros::Duration(1), &Controller::console_update, &heron_control);
 
