@@ -1,34 +1,49 @@
-# HERON Controller: Hydrodynamic Command Allocation and Dynamics Control
+# HERON Controller
 
-## Abstract
+Low-level control and command allocation for the Heron USV.
 
-The **Heron Controller** provides the low-level Real-Time control infrastructure for the Heron USV. The system is responsible for the synthesis of multi-variable wrench-to-thrust mappings, translating high-level force and torque vectors (Force X, Torque Z) into discrete thruster setpoints. This process accounts for the underlying differential drive topology and non-linear hydrodynamic drag manifolds.
+This package converts higher-level motion or wrench requests into the concrete
+left/right drive commands the platform understands.
 
-## Methodological Features
+## Responsibilities
 
-*   **Dynamic Force Allocation**: Adaptive differential mixing for non-holonomic thrust distribution.
-*   **Advanced Helm Interface**: Orchestrates standard `geometry_msgs/Twist` and `heron_msgs/Helm` input streams.
-*   **System Diagnostics**: Asynchronous publication of battery metrics, thermal states, and communication link integrity.
+- wrench or helm command handling
+- thruster allocation
+- low-level vehicle interface publishing
+- platform-status reporting
 
-## Node: `controller`
+## Main Node
 
-### Subscribed Topics
-*   `cmd_helm` (heron_msgs/Helm)
-*   `cmd_wrench` (geometry_msgs/Wrench)
-*   `imu/data` (sensor_msgs/Imu)
+`controller`
 
-### Published Topics
-*   `cmd_drive` (heron_msgs/Drive): Raw left/right thruster commands.
-*   `status` (heron_msgs/Status): System health.
+### Typical inputs
+
+- `cmd_helm`
+- `cmd_wrench`
+- `imu/data`
+
+### Typical outputs
+
+- `cmd_drive`
+- `status`
+
+## Role In The Workspace
+
+This package sits below navigation and mission logic:
+
+- ORACLE asks for missions
+- MARINER asks for motion
+- the Heron controller turns that into vehicle drive commands
 
 ## Usage
-
-This node is typically launched via `heron_base/launch/base.launch` or included in the simulation backend.
 
 ```bash
 rosrun heron_controller controller
 ```
 
+In practice this is usually launched as part of a larger bringup or simulation
+launch file rather than by itself.
+
 ## License
 
-BSD License.
+BSD.
