@@ -11,6 +11,7 @@ left/right drive commands the platform understands.
 - thruster allocation
 - low-level vehicle interface publishing
 - platform-status reporting
+- static force-compensation math used by allocation and recovery logic
 
 ## Main Node
 
@@ -43,6 +44,15 @@ rosrun heron_controller controller
 
 In practice this is usually launched as part of a larger bringup or simulation
 launch file rather than by itself.
+
+## Tests
+
+The package includes a focused C++ regression test for the force compensator in
+`tests/test_force_compensator.cpp`. Run it with:
+
+```bash
+catkin test heron_controller --no-status --summarize
+```
 
 ## License
 

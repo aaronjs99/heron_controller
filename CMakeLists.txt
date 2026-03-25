@@ -44,3 +44,16 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
 )
+
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(test_force_compensator
+    tests/test_force_compensator.cpp
+    src/force_compensator.cpp
+  )
+
+  if(TARGET test_force_compensator)
+    add_dependencies(test_force_compensator heron_msgs_generate_messages_cpp)
+    target_include_directories(test_force_compensator PRIVATE include ${catkin_INCLUDE_DIRS})
+    target_link_libraries(test_force_compensator ${catkin_LIBRARIES})
+  endif()
+endif()
