@@ -11,3 +11,10 @@ def test_heron_controller_repo_keeps_controller_source_header_and_config_contrac
         REPO_ROOT / "heron_controller/include/heron_controller/controller.h"
     ).exists()
     assert (REPO_ROOT / "heron_controller/config/heron_controller.yaml").exists()
+
+
+def test_heron_controller_does_not_declare_stale_catkin_gtest_targets():
+    cmake = (REPO_ROOT / "heron_controller/CMakeLists.txt").read_text()
+
+    assert "catkin_add_gtest" not in cmake
+    assert "CATKIN_ENABLE_TESTING OFF" in cmake

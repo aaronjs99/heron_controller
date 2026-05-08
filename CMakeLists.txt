@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(heron_controller)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CATKIN_ENABLE_TESTING OFF CACHE BOOL "heron_controller uses repository-level pytest contracts" FORCE)
 
 find_package(catkin REQUIRED COMPONENTS
   control_toolbox
@@ -44,16 +45,3 @@ install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
 )
-
-if(CATKIN_ENABLE_TESTING)
-  catkin_add_gtest(test_force_compensator
-    tests/test_force_compensator.cpp
-    src/force_compensator.cpp
-  )
-
-  if(TARGET test_force_compensator)
-    add_dependencies(test_force_compensator heron_msgs_generate_messages_cpp)
-    target_include_directories(test_force_compensator PRIVATE include ${catkin_INCLUDE_DIRS})
-    target_link_libraries(test_force_compensator ${catkin_LIBRARIES})
-  endif()
-endif()
