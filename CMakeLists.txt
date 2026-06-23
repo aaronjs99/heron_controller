@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(heron_controller)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CATKIN_ENABLE_TESTING OFF CACHE BOOL "heron_controller uses repository-level pytest contracts" FORCE)
+set(CATKIN_ENABLE_TESTING OFF CACHE BOOL "heron_controller uses repository-level pytest surfaces" FORCE)
 
 find_package(catkin REQUIRED COMPONENTS
   control_toolbox
