@@ -1,8 +1,8 @@
 # HERON Controller
 
-`heron_controller` contains low-level control and command-allocation support for
-the Heron USV. It converts higher-level motion or wrench requests into the
-left/right drive commands understood by the platform.
+`heron_controller` is the inherited Clearpath low-level control and
+command-allocation package for the Heron USV. It converts higher-level motion
+or wrench requests into left/right drive commands understood by the platform.
 
 ## Responsibilities
 
@@ -39,7 +39,9 @@ Typical outputs:
 ORACLE selects missions, MARINER asks for motion, and the controller turns
 low-level platform requests into drive commands. In the integrated GRANDE
 runtime, MARINER's drive bridge owns the normal `/cmd_vel` to `/cmd_drive`
-navigation path.
+navigation path. Do not change RC handling, MCU firmware behavior, or
+controller allocation assumptions from this package without a separately
+reviewed hardware procedure.
 
 ## Tests
 
