@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Provide a report for that the issue is
+about: Report a reproducible problem
 title: ''
 labels: bug
 assignees: tonybaltovski, civerachb-cpr
@@ -29,4 +29,4 @@ Provide the steps to reproduce:
 
 
 **Other notes**
-Add anything else you thing is important.
+Add anything else you think is important.

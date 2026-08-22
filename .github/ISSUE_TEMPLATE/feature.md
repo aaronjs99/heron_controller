@@ -7,8 +7,8 @@ assignees: tonybaltovski, civerachb-cpr
 
 ---
 
-**Describe the the feature you would like**
+**Describe the feature you would like**
 A clear and concise description of what you want to happen.
 
 **Other notes**
-Add anything else you thing is important.
+Add anything else you think is important.
