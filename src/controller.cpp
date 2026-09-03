@@ -17,99 +17,101 @@ Software License Agreement (BSD)
 */
 #include <heron_controller/controller.h>
 
-Controller::Controller(ros::NodeHandle& n) : node_(n) {
+Controller::Controller(rclcpp::Node::SharedPtr node) : node_(node) {
   force_compensator_ = new ForceCompensator(node_);
 
   // Assume no messages are being received. Don't send out anything new until commands are received
   control_mode = NO_CONTROL;
 
-  ros::NodeHandle prv_node_("~");
-
-  active_control_srv = node_.advertiseService("activate_control", &Controller::activate_control_service, this);
+  active_control_srv = node_->create_service<std_srvs::srv::SetBool>(
+      "activate_control",
+      std::bind(&Controller::activate_control_service, this,
+                std::placeholders::_1, std::placeholders::_2));
   is_active_control = false;
 
   // Timeouts for sensors
   // if no data has been received in a while, disable certain PID controls
-  prv_node_.param<double>("imu_data_timeout", imu_data_timeout_, 1 / 5.0);
+  imu_data_timeout_ = node_->declare_parameter<double>("imu_data_timeout", 1 / 5.0);
   imu_data_time_ = 0;
   imu_timeout_ = true;
 
-  prv_node_.param<double>("vel_data_timeout", vel_data_timeout_, 1 / 5.0);
+  vel_data_timeout_ = node_->declare_parameter<double>("vel_data_timeout", 1 / 5.0);
   vel_data_time_ = 0;
   vel_timeout_ = true;
 
   // Timeouts for control formats
   // if no command has been received in a while, stop sending drive commands
-  prv_node_.param<double>("course_cmd/timeout", course_cmd_timeout_, 0.5);
+  course_cmd_timeout_ = node_->declare_parameter<double>("course_cmd.timeout", 0.5);
   course_cmd_time_ = 0;
 
-  prv_node_.param<double>("helm_cmd/timeout", helm_cmd_timeout_, 0.5);
+  helm_cmd_timeout_ = node_->declare_parameter<double>("helm_cmd.timeout", 0.5);
   helm_cmd_time_ = 0;
 
-  prv_node_.param<double>("wrench_cmd/timeout", wrench_cmd_timeout_, 0.5);
+  wrench_cmd_timeout_ = node_->declare_parameter<double>("wrench_cmd.timeout", 0.5);
   wrench_cmd_time_ = 0;
 
-  prv_node_.param<double>("twist_cmd/timeout", twist_cmd_timeout_,
-                          0.5);  // If the commands dont show up in this much time don't send out drive commands
+  // If the commands dont show up in this much time don't send out drive commands
+  twist_cmd_timeout_ = node_->declare_parameter<double>("twist_cmd.timeout", 0.5);
   twist_cmd_time_ = 0;
 
   // Setup Fwd Vel Controller
-  fvel_dbg_pub_ = node_.advertise<geometry_msgs::Vector3>("fwd_vel_debug", 1000);
-  prv_node_.param<double>("fwd_vel/kf", fvel_kf_, 10);       // Feedforward Gain
-  prv_node_.param<double>("fwd_vel/kp", fvel_kp_, 90.0);     // Proportional Gain
-  prv_node_.param<double>("fwd_vel/kd", fvel_kd_, 1.0);      // Derivative Gain
-  prv_node_.param<double>("fwd_vel/ki", fvel_ki_, 0.0);      // Integral Gain
-  prv_node_.param<double>("fwd_vel/imax", fvel_imax_, 0.0);  // Clamp Integral Outputs
-  prv_node_.param<double>("fwd_vel/imin", fvel_imin_, 0.0);
+  fvel_dbg_pub_ = node_->create_publisher<geometry_msgs::msg::Vector3>("fwd_vel_debug", 1000);
+  fvel_kf_ = node_->declare_parameter<double>("fwd_vel.kf", 10);       // Feedforward Gain
+  fvel_kp_ = node_->declare_parameter<double>("fwd_vel.kp", 90.0);     // Proportional Gain
+  fvel_kd_ = node_->declare_parameter<double>("fwd_vel.kd", 1.0);      // Derivative Gain
+  fvel_ki_ = node_->declare_parameter<double>("fwd_vel.ki", 0.0);      // Integral Gain
+  fvel_imax_ = node_->declare_parameter<double>("fwd_vel.imax", 0.0);  // Clamp Integral Outputs
+  fvel_imin_ = node_->declare_parameter<double>("fwd_vel.imin", 0.0);
   fvel_meas_ = 0;
 
   // Setup Yaw Rate Controller
-  yr_dbg_pub_ = node_.advertise<geometry_msgs::Vector3>("yaw_rate_debug", 1000);
-  prv_node_.param<double>("yaw_rate/kf", yr_kf_, 10);       // Feedforward Gain
-  prv_node_.param<double>("yaw_rate/kp", yr_kp_, 2.0);      // Proportional Gain
-  prv_node_.param<double>("yaw_rate/kd", yr_kd_, 1.0);      // Derivative Gain
-  prv_node_.param<double>("yaw_rate/ki", yr_ki_, 0.0);      // Integral Gain
-  prv_node_.param<double>("yaw_rate/imax", yr_imax_, 0.0);  // Clamp Integral Outputs
-  prv_node_.param<double>("yaw_rate/imin", yr_imin_, 0.0);
+  yr_dbg_pub_ = node_->create_publisher<geometry_msgs::msg::Vector3>("yaw_rate_debug", 1000);
+  yr_kf_ = node_->declare_parameter<double>("yaw_rate.kf", 10);       // Feedforward Gain
+  yr_kp_ = node_->declare_parameter<double>("yaw_rate.kp", 2.0);      // Proportional Gain
+  yr_kd_ = node_->declare_parameter<double>("yaw_rate.kd", 1.0);      // Derivative Gain
+  yr_ki_ = node_->declare_parameter<double>("yaw_rate.ki", 0.0);      // Integral Gain
+  yr_imax_ = node_->declare_parameter<double>("yaw_rate.imax", 0.0);  // Clamp Integral Outputs
+  yr_imin_ = node_->declare_parameter<double>("yaw_rate.imin", 0.0);
   yr_meas_ = 0;
 
   // Setup Yaw Controller
-  y_dbg_pub_ = node_.advertise<geometry_msgs::Vector3>("yaw_debug", 1000);
+  y_dbg_pub_ = node_->create_publisher<geometry_msgs::msg::Vector3>("yaw_debug", 1000);
 
-  prv_node_.param<double>("yaw/kp", y_kf_, 5.0);
-  prv_node_.param<double>("yaw/kp", y_kp_, 5.0);
-  prv_node_.param<double>("yaw/kd", y_kd_, 1.0);
-  prv_node_.param<double>("yaw/ki", y_ki_, 0.5);
-  prv_node_.param<double>("yaw/imax", y_imax_, 0.0);  // clamp integral output at max yaw yorque
-  prv_node_.param<double>("yaw/imin", y_imin_, 0.0);
+  y_kf_ = node_->declare_parameter<double>("yaw.kf", 5.0);
+  y_kp_ = node_->declare_parameter<double>("yaw.kp", 5.0);
+  y_kd_ = node_->declare_parameter<double>("yaw.kd", 1.0);
+  y_ki_ = node_->declare_parameter<double>("yaw.ki", 0.5);
+  y_imax_ = node_->declare_parameter<double>("yaw.imax", 0.0);  // clamp integral output at max yaw yorque
+  y_imin_ = node_->declare_parameter<double>("yaw.imin", 0.0);
   y_meas_ = 0;
 
-  ROS_DEBUG("Fwd Vel Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f", fvel_kf_, fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_,
-            fvel_imin_);
-  ROS_DEBUG("Yaw Rate Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f", yr_kf_, yr_kp_, yr_ki_, yr_kd_, yr_imax_,
-            yr_imin_);
-  ROS_DEBUG("Yaw Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f", y_kf_, y_kp_, y_ki_, y_kd_, y_imax_, y_imin_);
+  RCLCPP_DEBUG(node_->get_logger(), "Fwd Vel Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f",
+               fvel_kf_, fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_, fvel_imin_);
+  RCLCPP_DEBUG(node_->get_logger(), "Yaw Rate Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f",
+               yr_kf_, yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_);
+  RCLCPP_DEBUG(node_->get_logger(), "Yaw Params (F,P,I,D,iMax,iMin):%f,%f,%f,%f,%f,%f",
+               y_kf_, y_kp_, y_ki_, y_kd_, y_imax_, y_imin_);
 
   fvel_pid_.reset();
-  fvel_pid_.initPid(fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_, fvel_imin_);
+  fvel_pid_.initialize(fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_, fvel_imin_, false);
   fvel_cmd_ = 0;
 
   yr_pid_.reset();
-  yr_pid_.initPid(yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_);
+  yr_pid_.initialize(yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_, false);
   yr_cmd_ = 0;
 
   // Setup Yaw Controller
   y_pid_.reset();
-  y_pid_.initPid(y_kp_, y_ki_, y_kd_, y_imax_, y_imin_);
+  y_pid_.initialize(y_kp_, y_ki_, y_kd_, y_imax_, y_imin_, false);
   y_cmd_ = 0;
 
-  prv_node_.param<double>("max/fwd_vel", max_fwd_vel_, MAX_FWD_VEL);
-  prv_node_.param<double>("max/fwd_force", max_fwd_force_, 2 * MAX_FWD_THRUST);  // 2 thrusters
-  prv_node_.param<double>("max/bck_vel", max_bck_vel_, MAX_BCK_VEL);
-  prv_node_.param<double>("max/bck_force", max_bck_force_, 2 * MAX_BCK_THRUST);
+  max_fwd_vel_ = node_->declare_parameter<double>("max.fwd_vel", MAX_FWD_VEL);
+  max_fwd_force_ = node_->declare_parameter<double>("max.fwd_force", 2 * MAX_FWD_THRUST);  // 2 thrusters
+  max_bck_vel_ = node_->declare_parameter<double>("max.bck_vel", MAX_BCK_VEL);
+  max_bck_force_ = node_->declare_parameter<double>("max.bck_force", 2 * MAX_BCK_THRUST);
 
-  prv_node_.param<double>("cov_limits/velocity", vel_cov_limit_, 0.28);
-  prv_node_.param<double>("cov_limits/imu", imu_cov_limit_, 1.0);
+  vel_cov_limit_ = node_->declare_parameter<double>("cov_limits.velocity", 0.28);
+  imu_cov_limit_ = node_->declare_parameter<double>("cov_limits.imu", 1.0);
 
   force_output_.force.x = 0;
   force_output_.force.y = 0;
@@ -123,14 +125,14 @@ Controller::Controller(ros::NodeHandle& n) : node_(n) {
 double Controller::fvel_compensator() {
   // calculate pid force X
   double fvel_error = fvel_cmd_ - fvel_meas_;
-  double fvel_comp_output = fvel_pid_.computeCommand(fvel_error, ros::Duration(1 / 20.0));
+  double fvel_comp_output = fvel_pid_.compute_command(fvel_error, rclcpp::Duration::from_seconds(1.0 / 20.0));
   fvel_comp_output = fvel_comp_output + fvel_kf_ * fvel_cmd_;
 
-  geometry_msgs::Vector3 dbg_info;
+  geometry_msgs::msg::Vector3 dbg_info;
   dbg_info.x = fvel_cmd_;
   dbg_info.y = fvel_meas_;
   dbg_info.z = fvel_comp_output;
-  fvel_dbg_pub_.publish(dbg_info);
+  fvel_dbg_pub_->publish(dbg_info);
 
   return fvel_comp_output;
 }
@@ -138,14 +140,14 @@ double Controller::fvel_compensator() {
 double Controller::yr_compensator() {
   // calculate pid torque z
   double yr_error = yr_cmd_ - yr_meas_;
-  double yr_comp_output = yr_pid_.computeCommand(yr_error, ros::Duration(1 / 20.0));
+  double yr_comp_output = yr_pid_.compute_command(yr_error, rclcpp::Duration::from_seconds(1.0 / 20.0));
   yr_comp_output = yr_comp_output + yr_kf_ * yr_cmd_;  // feedforward
 
-  geometry_msgs::Vector3 dbg_info;
+  geometry_msgs::msg::Vector3 dbg_info;
   dbg_info.x = yr_cmd_;
   dbg_info.y = yr_meas_;
   dbg_info.z = yr_comp_output;
-  yr_dbg_pub_.publish(dbg_info);
+  yr_dbg_pub_->publish(dbg_info);
 
   return yr_comp_output;
 }
@@ -153,24 +155,24 @@ double Controller::yr_compensator() {
 double Controller::y_compensator() {
   // calculate pid torque z
 
-  if (y_meas_ < 0) y_meas_ = y_meas_ + 2 * PI;
+  if (y_meas_ < 0) y_meas_ = y_meas_ + 2 * HERON_PI;
 
   double y_error = y_cmd_ - y_meas_;
 
-  if (fabs(y_error) > PI) {
-    if (y_cmd_ > PI)  // presumably y_meas_ < PI
-      y_error = -(y_meas_ + (2 * PI - y_cmd_));
+  if (fabs(y_error) > HERON_PI) {
+    if (y_cmd_ > HERON_PI)  // presumably y_meas_ < PI
+      y_error = -(y_meas_ + (2 * HERON_PI - y_cmd_));
     else  // y_cmd_ < pi, y_meas > pi
-      y_error = y_cmd_ + (2 * PI - y_meas_);
+      y_error = y_cmd_ + (2 * HERON_PI - y_meas_);
   }
 
-  double y_comp_output = y_pid_.computeCommand(y_error, ros::Duration(1 / 20.0));
+  double y_comp_output = y_pid_.compute_command(y_error, rclcpp::Duration::from_seconds(1.0 / 20.0));
 
-  geometry_msgs::Vector3 dbg_info;
+  geometry_msgs::msg::Vector3 dbg_info;
   dbg_info.x = y_cmd_;
   dbg_info.y = y_meas_;
   dbg_info.z = y_comp_output;
-  y_dbg_pub_.publish(dbg_info);
+  y_dbg_pub_->publish(dbg_info);
 
   return y_comp_output;
 }
@@ -211,7 +213,7 @@ void Controller::update_yaw_control() {
 }
 
 // Callback to receive twist msgs (cmd_vel style)
-void Controller::twist_callback(const geometry_msgs::Twist msg) {
+void Controller::twist_callback(const geometry_msgs::msg::Twist msg) {
   yr_cmd_ = msg.angular.z;
   update_yaw_rate_control();
 
@@ -223,18 +225,18 @@ void Controller::twist_callback(const geometry_msgs::Twist msg) {
     update_fwd_vel_control();
   }
 
-  twist_cmd_time_ = ros::Time::now().toSec();
+  twist_cmd_time_ = node_->now().seconds();
 }  // twist_callback
 
 // Callback to receive raw wrench commands (force along x axis and torque about z axis).
-void Controller::wrench_callback(const geometry_msgs::Wrench msg) {
+void Controller::wrench_callback(const geometry_msgs::msg::Wrench msg) {
   force_output_.force.x = msg.force.x;
   force_output_.torque.z = msg.torque.z;
-  wrench_cmd_time_ = ros::Time::now().toSec();
+  wrench_cmd_time_ = node_->now().seconds();
 }
 
 // Callback for yaw command which receives a yaw (rad) and speed (m/s) command
-void Controller::course_callback(const heron_msgs::Course msg) {
+void Controller::course_callback(const heron_msgs::msg::Course msg) {
   // Save Yaw Command and process it
   y_cmd_ = msg.yaw;
   update_yaw_control();
@@ -243,11 +245,11 @@ void Controller::course_callback(const heron_msgs::Course msg) {
   fvel_cmd_ = msg.speed;
   update_fwd_vel_control();
 
-  course_cmd_time_ = ros::Time::now().toSec();
+  course_cmd_time_ = node_->now().seconds();
 }
 
 // Callback for helm commands which receives a thrust percentage (0..1) and a yaw rate (rad/s)
-void Controller::helm_callback(const heron_msgs::Helm msg) {
+void Controller::helm_callback(const heron_msgs::msg::Helm msg) {
   // Basic Helm Control
 
   // Calculate Thrust control
@@ -261,22 +263,22 @@ void Controller::helm_callback(const heron_msgs::Helm msg) {
   yr_cmd_ = msg.yaw_rate;
   update_yaw_rate_control();
 
-  helm_cmd_time_ = ros::Time::now().toSec();
+  helm_cmd_time_ = node_->now().seconds();
 }
 
 // ENU
-void Controller::odom_callback(const nav_msgs::Odometry msg) {
+void Controller::odom_callback(const nav_msgs::msg::Odometry msg) {
   // check if navsat/vel is being integrated into odometry
   if (msg.twist.covariance[0] < vel_cov_limit_ && msg.twist.covariance[7] < vel_cov_limit_) {
-    vel_data_time_ = ros::Time::now().toSec();
+    vel_data_time_ = node_->now().seconds();
   }  // if
 
   // check if imu/data is being integrated into odometry
   if (msg.pose.covariance[35] < imu_cov_limit_ && msg.twist.covariance[35] < imu_cov_limit_) {
-    imu_data_time_ = ros::Time::now().toSec();
+    imu_data_time_ = node_->now().seconds();
   }  // if
 
-  y_meas_ = tf::getYaw(msg.pose.pose.orientation);
+  y_meas_ = tf2::getYaw(msg.pose.pose.orientation);
   yr_meas_ = msg.twist.twist.angular.z;
   fvel_meas_ = msg.twist.twist.linear.x * std::cos(y_meas_) + msg.twist.twist.linear.y * std::sin(y_meas_);
 
@@ -302,7 +304,7 @@ void Controller::odom_callback(const nav_msgs::Odometry msg) {
   }  // switch
 }  // odom_callback
 
-void Controller::console_update(const ros::TimerEvent& event) {
+void Controller::console_update() {
   std::string output = "";
   switch (control_mode) {
     case COURSE_CONTROL:
@@ -331,17 +333,17 @@ void Controller::console_update(const ros::TimerEvent& event) {
 
   if (vel_timeout_) output += ": GPS Velocity data not received or being received too slowly";
 
-  ROS_INFO("%s", output.c_str());
+  RCLCPP_INFO(node_->get_logger(), "%s", output.c_str());
 }
 
-void Controller::control_update(const ros::TimerEvent& event) {
-  if (ros::Time::now().toSec() - imu_data_time_ > imu_data_timeout_) {
+void Controller::control_update() {
+  if (node_->now().seconds() - imu_data_time_ > imu_data_timeout_) {
     imu_timeout_ = true;
   } else {
     imu_timeout_ = false;
   }  // else
 
-  if (ros::Time::now().toSec() - vel_data_time_ > vel_data_timeout_) {
+  if (node_->now().seconds() - vel_data_time_ > vel_data_timeout_) {
     vel_timeout_ = true;
   } else {
     vel_timeout_ = false;
@@ -379,15 +381,15 @@ void Controller::control_update(const ros::TimerEvent& event) {
       control_mode = WRENCH_CONTROL;
     }  // elseif
   } else {
-    if (ros::Time::now().toSec() - twist_cmd_time_ < twist_cmd_timeout_ && !imu_timeout_ && !vel_timeout_) {
+    if (node_->now().seconds() - twist_cmd_time_ < twist_cmd_timeout_ && !imu_timeout_ && !vel_timeout_) {
       control_mode = TWIST_CONTROL;
-    } else if (ros::Time::now().toSec() - twist_cmd_time_ < twist_cmd_timeout_ && !imu_timeout_) {
+    } else if (node_->now().seconds() - twist_cmd_time_ < twist_cmd_timeout_ && !imu_timeout_) {
       control_mode = TWIST_LIN_CONTROL;
-    } else if (ros::Time::now().toSec() - course_cmd_time_ < course_cmd_timeout_ && !imu_timeout_ && !vel_timeout_) {
+    } else if (node_->now().seconds() - course_cmd_time_ < course_cmd_timeout_ && !imu_timeout_ && !vel_timeout_) {
       control_mode = COURSE_CONTROL;
-    } else if (ros::Time::now().toSec() - helm_cmd_time_ < helm_cmd_timeout_ && !imu_timeout_) {
+    } else if (node_->now().seconds() - helm_cmd_time_ < helm_cmd_timeout_ && !imu_timeout_) {
       control_mode = HELM_CONTROL;
-    } else if (ros::Time::now().toSec() - wrench_cmd_time_ < wrench_cmd_timeout_) {
+    } else if (node_->now().seconds() - wrench_cmd_time_ < wrench_cmd_timeout_) {
       control_mode = WRENCH_CONTROL;
     } else {
       control_mode = NO_CONTROL;
@@ -400,28 +402,37 @@ void Controller::control_update(const ros::TimerEvent& event) {
   force_compensator_->pub_thrust_cmd(force_output_);
 }
 
-bool Controller::activate_control_service(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp) {
-  is_active_control = req.data;
-  resp.success = is_active_control;
-  resp.message = "Activated Control.";
-  return true;
+void Controller::activate_control_service(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> resp) {
+  is_active_control = req->data;
+  resp->success = is_active_control;
+  resp->message = "Activated Control.";
 }
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "controller");
-  ros::NodeHandle nh;
-  Controller heron_control(nh);
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<rclcpp::Node>("controller");
+  Controller heron_control(node);
 
-  ros::Subscriber twist_sub = nh.subscribe("cmd_vel", 1, &Controller::twist_callback, &heron_control);
-  ros::Subscriber wrench_sub = nh.subscribe("cmd_wrench", 1, &Controller::wrench_callback, &heron_control);
-  ros::Subscriber helm_sub = nh.subscribe("cmd_helm", 1, &Controller::helm_callback, &heron_control);
-  ros::Subscriber course_sub = nh.subscribe("cmd_course", 1, &Controller::course_callback, &heron_control);
+  auto twist_sub = node->create_subscription<geometry_msgs::msg::Twist>(
+      "cmd_vel", 1, std::bind(&Controller::twist_callback, &heron_control, std::placeholders::_1));
+  auto wrench_sub = node->create_subscription<geometry_msgs::msg::Wrench>(
+      "cmd_wrench", 1, std::bind(&Controller::wrench_callback, &heron_control, std::placeholders::_1));
+  auto helm_sub = node->create_subscription<heron_msgs::msg::Helm>(
+      "cmd_helm", 1, std::bind(&Controller::helm_callback, &heron_control, std::placeholders::_1));
+  auto course_sub = node->create_subscription<heron_msgs::msg::Course>(
+      "cmd_course", 1, std::bind(&Controller::course_callback, &heron_control, std::placeholders::_1));
 
-  ros::Subscriber odom_sub = nh.subscribe("/state/odometry", 1, &Controller::odom_callback, &heron_control);
-  ros::Timer control_output = nh.createTimer(ros::Duration(1 / 50.0), &Controller::control_update, &heron_control);
-  ros::Timer console_update = nh.createTimer(ros::Duration(1), &Controller::console_update, &heron_control);
+  auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>(
+      "/state/odometry", 1, std::bind(&Controller::odom_callback, &heron_control, std::placeholders::_1));
+  auto control_output = node->create_wall_timer(
+      std::chrono::duration<double>(1.0 / 50.0), std::bind(&Controller::control_update, &heron_control));
+  auto console_update_timer = node->create_wall_timer(
+      std::chrono::duration<double>(1.0), std::bind(&Controller::console_update, &heron_control));
 
-  ros::spin();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
 
   return 0;
 }

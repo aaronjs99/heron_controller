@@ -21,11 +21,13 @@ OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTE
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include <algorithm>
+
 #include "heron_controller/force_compensator.h"
 
-ForceCompensator::ForceCompensator(ros::NodeHandle &n) : node_(n) {
-  cmd_pub_ = node_.advertise<heron_msgs::Drive>("cmd_drive", 1000);
-  eff_pub_ = node_.advertise<geometry_msgs::Wrench>("eff_wrench", 1000);
+ForceCompensator::ForceCompensator(rclcpp::Node::SharedPtr node) : node_(node) {
+  cmd_pub_ = node_->create_publisher<heron_msgs::msg::Drive>("cmd_drive", 1000);
+  eff_pub_ = node_->create_publisher<geometry_msgs::msg::Wrench>("eff_wrench", 1000);
 }
 
 // Take in a thrust requirement and return the electronic input (into the motor controller) required to achieve given
@@ -50,8 +52,8 @@ double ForceCompensator::saturate_thrusters(double thrust) {
 }
 
 // Take in wrench command and output cmd_drive messages to achieve the given wrench command
-void ForceCompensator::pub_thrust_cmd(geometry_msgs::Wrench output) {
-  heron_msgs::Drive cmd_output;
+void ForceCompensator::pub_thrust_cmd(geometry_msgs::msg::Wrench output) {
+  heron_msgs::msg::Drive cmd_output;
   double fx = output.force.x;
   double tauz = output.torque.z;
 
@@ -92,7 +94,7 @@ void ForceCompensator::pub_thrust_cmd(geometry_msgs::Wrench output) {
 
   cmd_output.left = calculate_motor_setting(left_thrust);
   cmd_output.right = calculate_motor_setting(right_thrust);
-  cmd_pub_.publish(cmd_output);
+  cmd_pub_->publish(cmd_output);
 
   pub_effective_wrench(left_thrust, right_thrust);
 }
@@ -101,8 +103,8 @@ void ForceCompensator::pub_thrust_cmd(geometry_msgs::Wrench output) {
 // is a reverse calculation of what is done in "update_forces" and shows the user what the limitations of the thrust
 // settings are.
 void ForceCompensator::pub_effective_wrench(double left_thrust, double right_thrust) {
-  geometry_msgs::Wrench effective_output;
+  geometry_msgs::msg::Wrench effective_output;
   effective_output.force.x = left_thrust + right_thrust;
   effective_output.torque.z = (right_thrust - left_thrust) * BOAT_WIDTH;
-  eff_pub_.publish(effective_output);
+  eff_pub_->publish(effective_output);
 }

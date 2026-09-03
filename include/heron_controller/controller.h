@@ -24,27 +24,28 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 #ifndef HERON_CONTROLLER_CONTROLLER_H
 #define HERON_CONTROLLER_CONTROLLER_H
 
-#include <control_toolbox/pid.h>
-#include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Vector3.h>
-#include <geometry_msgs/Wrench.h>
+#include <control_toolbox/pid.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
+#include <geometry_msgs/msg/wrench.hpp>
 #include <heron_controller/force_compensator.h>
 #include <heron_controller/heron_constants.h>
-#include <heron_msgs/Course.h>
-#include <heron_msgs/Helm.h>
-#include <nav_msgs/Odometry.h>
-#include <ros/ros.h>
-#include <std_msgs/Float32.h>
-#include <std_srvs/SetBool.h>
-#include <tf/tf.h>
+#include <heron_msgs/msg/course.hpp>
+#include <heron_msgs/msg/helm.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float32.hpp>
+#include <std_srvs/srv/set_bool.hpp>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include "string.h"
 
 class Controller {
 private:
-  ros::NodeHandle node_;
+  rclcpp::Node::SharedPtr node_;
   ForceCompensator* force_compensator_;
-  geometry_msgs::Wrench force_output_;
+  geometry_msgs::msg::Wrench force_output_;
 
   // GPS Velocity Feedback timeout
   double vel_data_time_, vel_data_timeout_, vel_cov_limit_;
@@ -61,19 +62,20 @@ private:
   double twist_cmd_time_, twist_cmd_timeout_;
 
   control_toolbox::Pid fvel_pid_;
-  ros::Publisher fvel_dbg_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr fvel_dbg_pub_;
   double fvel_kf_, fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_, fvel_imin_;
   double fvel_cmd_, fvel_meas_;
 
   // Yaw Rate Controller Details
   control_toolbox::Pid yr_pid_;
-  ros::Publisher yr_dbg_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr yr_dbg_pub_;
+  
   double yr_kf_, yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_;
   double yr_cmd_, yr_meas_;
 
   // Yaw Control Details
   control_toolbox::Pid y_pid_;
-  ros::Publisher y_dbg_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr y_dbg_pub_;
   double y_kf_, y_kp_, y_ki_, y_kd_, y_imax_, y_imin_;
   double y_cmd_, y_meas_;
 
@@ -82,11 +84,11 @@ private:
 
   int control_mode;  // Helm, Course, Twist, or Raw Wrench
 
-  ros::ServiceServer active_control_srv;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr active_control_srv;
   bool is_active_control;
 
 public:
-  Controller(ros::NodeHandle& n);
+  explicit Controller(rclcpp::Node::SharedPtr node);
   ~Controller() { delete force_compensator_; }
 
   double fvel_compensator();
@@ -98,17 +100,19 @@ public:
   void update_yaw_rate_control();
   void update_yaw_control();
 
-  void wrench_callback(const geometry_msgs::Wrench msg);
-  void course_callback(const heron_msgs::Course msg);
-  void helm_callback(const heron_msgs::Helm msg);
-  void twist_callback(const geometry_msgs::Twist msg);
+  void wrench_callback(const geometry_msgs::msg::Wrench msg);
+  void course_callback(const heron_msgs::msg::Course msg);
+  void helm_callback(const heron_msgs::msg::Helm msg);
+  void twist_callback(const geometry_msgs::msg::Twist msg);
 
-  void odom_callback(const nav_msgs::Odometry msg);
+  void odom_callback(const nav_msgs::msg::Odometry msg);
 
-  void control_update(const ros::TimerEvent& event);
-  void console_update(const ros::TimerEvent& event);
+  void control_update();
+  void console_update();
 
-  bool activate_control_service(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& resp);
+  void activate_control_service(
+      const std::shared_ptr<std_srvs::srv::SetBool::Request> req,
+      std::shared_ptr<std_srvs::srv::SetBool::Response> resp);
 };
 
 #endif  // HERON_CONTROLLER_CONTROLLER_H
