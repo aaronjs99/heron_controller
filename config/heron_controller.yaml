@@ -27,3 +27,10 @@ yaw:
 max:
   fwd_vel: 3.0
   bck_vel: 0.5
+
+twist_cmd:
+  timeout: 1.5
+
+cov_limits:
+  velocity: 100.0
+  imu: 100.0
