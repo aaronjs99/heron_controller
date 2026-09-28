@@ -69,7 +69,7 @@ private:
   // Yaw Rate Controller Details
   control_toolbox::Pid yr_pid_;
   rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr yr_dbg_pub_;
-  
+
   double yr_kf_, yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_;
   double yr_cmd_, yr_meas_;
 

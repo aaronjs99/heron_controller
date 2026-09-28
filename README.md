@@ -9,13 +9,12 @@ left/right drive commands understood by the platform.
 - helm and wrench command handling
 - thruster allocation
 - platform command publication
-- status publication
 - force-compensation math used by allocation and recovery logic
 
 ## Main Node
 
 ```bash
-rosrun heron_controller controller
+ros2 launch heron_controller controller.launch.py
 ```
 
 The node is normally launched by a larger bringup or simulation profile rather
@@ -25,14 +24,17 @@ than by hand.
 
 Typical inputs:
 
+- `cmd_vel`
 - `cmd_helm`
 - `cmd_wrench`
-- `imu/data`
+- `cmd_course`
+- `state/odometry` (feedback; relative to the node namespace)
 
 Typical outputs:
 
 - `cmd_drive`
-- `status`
+- `eff_wrench`
+- `fwd_vel_debug`, `yaw_rate_debug`, `yaw_debug`
 
 ## Workspace Role
 
@@ -41,15 +43,16 @@ low-level platform requests into drive commands. In the integrated GRANDE
 runtime, MARINER's drive bridge owns the normal `/cmd_vel` to `/cmd_drive`
 navigation path.
 
-## Tests
-
-```bash
-catkin test heron_controller --no-status --summarize
-```
-
-The focused C++ regression test for force compensation is in
-`tests/test_force_compensator.cpp`.
-
 ## License
 
 BSD.
+
+# File Structure
+
+| File | Relevance | Dependencies | Used by |
+| --- | --- | --- | --- |
+| .gitignore | Excludes local environments, generated files, and robot recordings. | Git | Contributors |
+| CHANGELOG.rst | Records controller package releases. | None | Package users |
+| CMakeLists.txt | Builds and installs the ROS 2 Heron controller executable. | CMake, ament_cmake, ROS 2 | colcon build |
+| LICENSE | Defines the inherited Clearpath BSD license terms. | None | Package users |
+| package.xml | Declares controller package metadata and ROS dependencies. | ROS 2 Jazzy | colcon, rosdep |

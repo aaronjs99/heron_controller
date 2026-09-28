@@ -16,8 +16,36 @@ Software License Agreement (BSD)
 \copyright Copyright (c) 2014, Clearpath Robotics, Inc., All rights reserved.
 */
 #include <heron_controller/controller.h>
+#include <rclcpp/create_timer.hpp>
+#include <limits>
 
-Controller::Controller(rclcpp::Node::SharedPtr node) : node_(node) {
+namespace {
+
+control_toolbox::AntiWindupStrategy pid_antiwindup_strategy(double i_max, double i_min) {
+  control_toolbox::AntiWindupStrategy strategy;
+  strategy.type = control_toolbox::AntiWindupStrategy::LEGACY;
+  strategy.i_max = i_max;
+  strategy.i_min = i_min;
+  strategy.legacy_antiwindup = false;
+  return strategy;
+}
+
+}  // namespace
+
+Controller::Controller(rclcpp::Node::SharedPtr node)
+    : node_(node),
+      fvel_pid_(0.0, 0.0, 0.0, std::numeric_limits<double>::infinity(),
+                -std::numeric_limits<double>::infinity(),
+                pid_antiwindup_strategy(std::numeric_limits<double>::infinity(),
+                                        -std::numeric_limits<double>::infinity())),
+      yr_pid_(0.0, 0.0, 0.0, std::numeric_limits<double>::infinity(),
+              -std::numeric_limits<double>::infinity(),
+              pid_antiwindup_strategy(std::numeric_limits<double>::infinity(),
+                                      -std::numeric_limits<double>::infinity())),
+      y_pid_(0.0, 0.0, 0.0, std::numeric_limits<double>::infinity(),
+             -std::numeric_limits<double>::infinity(),
+             pid_antiwindup_strategy(std::numeric_limits<double>::infinity(),
+                                     -std::numeric_limits<double>::infinity())) {
   force_compensator_ = new ForceCompensator(node_);
 
   // Assume no messages are being received. Don't send out anything new until commands are received
@@ -93,16 +121,22 @@ Controller::Controller(rclcpp::Node::SharedPtr node) : node_(node) {
                y_kf_, y_kp_, y_ki_, y_kd_, y_imax_, y_imin_);
 
   fvel_pid_.reset();
-  fvel_pid_.initialize(fvel_kp_, fvel_ki_, fvel_kd_, fvel_imax_, fvel_imin_, false);
+  fvel_pid_.initialize(fvel_kp_, fvel_ki_, fvel_kd_, std::numeric_limits<double>::infinity(),
+                       -std::numeric_limits<double>::infinity(),
+                       pid_antiwindup_strategy(fvel_imax_, fvel_imin_));
   fvel_cmd_ = 0;
 
   yr_pid_.reset();
-  yr_pid_.initialize(yr_kp_, yr_ki_, yr_kd_, yr_imax_, yr_imin_, false);
+  yr_pid_.initialize(yr_kp_, yr_ki_, yr_kd_, std::numeric_limits<double>::infinity(),
+                     -std::numeric_limits<double>::infinity(),
+                     pid_antiwindup_strategy(yr_imax_, yr_imin_));
   yr_cmd_ = 0;
 
   // Setup Yaw Controller
   y_pid_.reset();
-  y_pid_.initialize(y_kp_, y_ki_, y_kd_, y_imax_, y_imin_, false);
+  y_pid_.initialize(y_kp_, y_ki_, y_kd_, std::numeric_limits<double>::infinity(),
+                    -std::numeric_limits<double>::infinity(),
+                    pid_antiwindup_strategy(y_imax_, y_imin_));
   y_cmd_ = 0;
 
   max_fwd_vel_ = node_->declare_parameter<double>("max.fwd_vel", MAX_FWD_VEL);
@@ -425,11 +459,16 @@ int main(int argc, char** argv) {
       "cmd_course", 1, std::bind(&Controller::course_callback, &heron_control, std::placeholders::_1));
 
   auto odom_sub = node->create_subscription<nav_msgs::msg::Odometry>(
-      "/state/odometry", 1, std::bind(&Controller::odom_callback, &heron_control, std::placeholders::_1));
-  auto control_output = node->create_wall_timer(
-      std::chrono::duration<double>(1.0 / 50.0), std::bind(&Controller::control_update, &heron_control));
-  auto console_update_timer = node->create_wall_timer(
-      std::chrono::duration<double>(1.0), std::bind(&Controller::console_update, &heron_control));
+      "state/odometry", 1,
+      std::bind(&Controller::odom_callback, &heron_control, std::placeholders::_1));
+  auto control_output = rclcpp::create_timer(
+      node->get_node_base_interface(), node->get_node_timers_interface(), node->get_clock(),
+      std::chrono::duration<double>(1.0 / 50.0),
+      std::bind(&Controller::control_update, &heron_control));
+  auto console_update_timer = rclcpp::create_timer(
+      node->get_node_base_interface(), node->get_node_timers_interface(), node->get_clock(),
+      std::chrono::duration<double>(1.0),
+      std::bind(&Controller::console_update, &heron_control));
 
   rclcpp::spin(node);
   rclcpp::shutdown();

@@ -1,36 +1,29 @@
-# Tuning for the Heron PID controller.
+# ROS 2 parameters for the Heron low-level controller node.
+controller:
+  ros__parameters:
+    fwd_vel.kf: 20.0
+    fwd_vel.kp: 150.0
+    fwd_vel.ki: 40.0
+    fwd_vel.kd: 130.0
+    fwd_vel.imax: 25.0
+    fwd_vel.imin: -25.0
 
-fwd_vel:
-  kf: 20
-  kp: 150
-  ki: 40
-  kd: 130
-  imax: 25.0
-  imin: -25.0
+    yaw_rate.kf: 60.0
+    yaw_rate.kp: 220.0
+    yaw_rate.ki: 65.0
+    yaw_rate.kd: 60.0
+    yaw_rate.imax: 20.0
+    yaw_rate.imin: -20.0
 
-yaw_rate:
-  kf: 60
-  kp: 220
-  ki: 65.0
-  kd: 60
-  imax: 20.0
-  imin: -20.0
+    yaw.kf: 0.0
+    yaw.kp: 0.3
+    yaw.ki: 0.0
+    yaw.kd: 0.0
+    yaw.imax: 0.0
+    yaw.imin: 0.0
 
-yaw:
-  kf: 0
-  kp: 0.3
-  ki: 0
-  kd: 0
-  imax: 0.0
-  imin: 0.0
-
-max:
-  fwd_vel: 3.0
-  bck_vel: 0.5
-
-twist_cmd:
-  timeout: 1.5
-
-cov_limits:
-  velocity: 100.0
-  imu: 100.0
+    max.fwd_vel: 3.0
+    max.bck_vel: 0.5
+    twist_cmd.timeout: 1.5
+    cov_limits.velocity: 100.0
+    cov_limits.imu: 100.0
